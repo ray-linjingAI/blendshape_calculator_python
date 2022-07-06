@@ -41,9 +41,11 @@ points_idx = [33, 263, 61, 291, 199]
 points_idx = points_idx + [key for (key, val) in procrustes_landmark_basis]
 points_idx = list(set(points_idx))
 points_idx.sort()
+rss = {"blendshape":{"faceMesh3DS":[]}}
 
 # Calculates the 3d rotation and 3d landmarks from the 2d landmarks
 def calculate_rotation(face_landmarks, pcf: PCF, image_shape):
+    global rss
     global count2
     frame_width, frame_height, channels = image_shape
     focal_length = frame_width
@@ -65,12 +67,13 @@ def calculate_rotation(face_landmarks, pcf: PCF, image_shape):
     metric_landmarks, pose_transform_mat = get_metric_landmarks(
         landmarks.copy(), pcf
     )
-    results = {"metric_landmark":[]}
+    rss = {"blendshape":{"faceMesh3DS":[],"faceMesh":[]}}
+
     with open('metric_landmark/metric_landmarks{}.json'.format(str(count2)),'a+') as f:
         for i in range(468):
             tempxyz = metric_landmarks[:,i]
-            results["metric_landmark"].append({"x":tempxyz[0],"y":tempxyz[1],"z":tempxyz[2]})
-        json_str = json.dumps(results)
+            rss["blendshape"]["faceMesh3DS"].append({"x":tempxyz[0],"y":tempxyz[1],"z":tempxyz[2]})
+        json_str = json.dumps(rss).replace(" ","")
         f.write(json_str)
         count2 += 1
     model_points = metric_landmarks[0:3, points_idx].T
@@ -110,7 +113,7 @@ class Mefamo():
         self.ip = ip
         self.upd_port = port
         
-        self.image_height, self.image_width, channels = (640, 368, 3)
+        self.image_height, self.image_width, channels = (1080, 1620, 3)
 
         # pseudo camera internals
         focal_length = self.image_width
@@ -195,7 +198,7 @@ class Mefamo():
                 time.sleep(0.01)
 
     def _process_image(self, image):   
-        global count1,count3
+        global count1,count3,rss
         # To improve performance, optionally mark the image as not writeable to
         # pass by reference.
         image.flags.writeable = False
@@ -203,15 +206,15 @@ class Mefamo():
         results = self.face_mesh.process(image)
 
         for face_landmarks in results.multi_face_landmarks:
-            results2 = {"face_landmark":[]}
+            results2 = {"faceLandmarks":[]}
             landmarks = np.array(
                 [(lm.x, lm.y, lm.z) for lm in face_landmarks.landmark[:468]])
             with open('mp_landmark/face_landmark{}.json'.format(str(count1)),'a+') as f:
                 for i in range(468):
                     tempxyz = landmarks[i,:].tolist()
             
-                    results2["face_landmark"].append({"x":tempxyz[0],"y":tempxyz[1],"z":tempxyz[2]})
-                json_str = json.dumps(results2)
+                    results2["faceLandmarks"].append({"x":tempxyz[0],"y":tempxyz[1],"z":tempxyz[2]})
+                json_str = json.dumps(results2).replace(" ","")
                 f.write(json_str)
             count1 +=1
 
@@ -300,10 +303,10 @@ class Mefamo():
         with self.lock:
 
             self.got_new_data = True
-            rss = {"blendshape":{"faceMesh":[]}}
+            # rss = {"blendshape":{"faceMesh3DS":[]}}
             with open('output_blendshape/blendshape{}.json'.format(str(count3)),'a+') as f:
                 rss["blendshape"]["faceMesh"] = self.live_link_face._blend_shapes.copy()
-                json_str = json.dumps(rss)
+                json_str = json.dumps(rss).replace(" ","")
                 f.write(json_str)
                 count3 +=1
             ms = self.filter(self.live_link_face._blend_shapes.copy())
