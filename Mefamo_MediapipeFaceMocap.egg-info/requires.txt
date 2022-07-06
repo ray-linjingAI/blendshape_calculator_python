@@ -1,0 +1,6 @@
+numpy
+opencv-python
+pylivelinkface
+mediapipe
+transforms3d
+open3d
